@@ -1,15 +1,15 @@
 ﻿Configuration windowstest {
  
-
+<#
  param(
  [Parameter(Mandatory=$true)]
  [System.Management.Automation.Credential()]$credential = [System.Management.Automation.Credential]
 
  )
-
+#>
 
  
-Import-DscResource -ModuleName xsmbshare,hostsfile,RecylceBin,xDisk,cFileShare,cFolderQuota
+Import-DscResource -ModuleName xsmbshare,hostsfile,RecylceBin,xDisk,cFileShare,cFolderQuota,xnetworking
  ##Testing all installed windows features
  
  Node $AllNodes.Where({$_.name -eq'server1'}).nodename {
@@ -29,7 +29,7 @@ Import-DscResource -ModuleName xsmbshare,hostsfile,RecylceBin,xDisk,cFileShare,c
  ##Testing all installed windows features                     
 
  
-
+ <#
  user Localadmin {
 
 
@@ -51,6 +51,8 @@ Import-DscResource -ModuleName xsmbshare,hostsfile,RecylceBin,xDisk,cFileShare,c
 
 
  }
+ #>
+
 
  LocalConfigurationManager {
 
@@ -174,51 +176,65 @@ Import-DscResource -ModuleName xsmbshare,hostsfile,RecylceBin,xDisk,cFileShare,c
 
 ## Assigniong Perrmissions 
                      
-                       }}
+                       }
                        
- <#Node $AllNodes.Where({$_.name -eq'windows8'}).nodename {
+ Node $AllNodes.Where({$_.name -eq'windows8'}).nodename {
 
 
  
- xSmbShare  win8 {
+ xSmbShare  Clients {
 
    Name = "Clients"
    Path = "C:\Testwindows"
    Ensure = "present"
    NoAccess = "SUPERMARIO\MarianG"
-   ReadAccess = "SUPERMARIO\MariuszS"
+   ReadAccess = "SUPERMARIO\MariuszS","SUPERMARIO\Mario"
    Description = "Testwindows"
  
             }
 
-
-
-
-
- xSmbShare  win82 {
+ xSmbShare  Libary {
 
    Name = "Libary"
    Path = "C:\Testwindows1"
    Ensure = "present"
-   FullAccess = "SUPERMARIO\Mario","SUPERMARIO\Administrator"
+   FullAccess = "SUPERMARIO\Administrator"
    NoAccess = "SUPERMARIO\NOOB","SUPERMARIO\MarianG"
    ReadAccess = "SUPERMARIO\MariuszS"
    Description = "Testwindowsyoyoyoyo"
-   
-   
- 
+
    
             }
 
 
+ xDNSServerAddress DNSSetup {
+
+
+ InterfaceAlias = "Internal"
+ Address = "192.168.233.10","8.8.8.8"
+ AddressFamily = "Ipv4"
+
+
+ }
+
+
+ xIPAddress StaticIp {
+
+
+ InterfaceAlias = "Internal"
+ AddressFamily = "Ipv4"
+ IPAddress = "192.168.233.170"
+ SubnetMask = 255.255.255.0
+ DefaultGateway = "192.168.233.50"
+
+ }
+
+
+
     }
 
-
-   
-
-  
-
-} #>
+}
+ 
 
 $myconfig = `
 
@@ -273,12 +289,12 @@ try = @{ installed = $jeb }
 
 $jeb = (Get-WindowsFeature | Where-Object installstate -eq 'installed').name
 
-windowstest  -ConfigurationData $myconfig -OutputPath 'C:\TUTAJ\Windows8' 
+windowstest  -ConfigurationData $myconfig -OutputPath 'C:\TUTAJ\' 
 
 
 
 
 
 
-Start-DscConfiguration -Path C:\TUTAJ\Windows8   -Wait -Verbose -Force
+Start-DscConfiguration -Path C:\TUTAJ\   -Wait -Verbose -Force
 
