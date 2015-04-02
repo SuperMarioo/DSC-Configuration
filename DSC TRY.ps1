@@ -1,47 +1,47 @@
 ﻿configuration PullServer
-{
+{ 
         
 param(
 
-[string]$guid,
-[System.Management.Automation.Credential()]$credential = [System.Management.Automation.PSCredential]
-
-
+[string]$guid
 
 
 )        
         
         
         
-        Import-DscResource -ModuleName   xtimezone, xnetworking
+        Import-DscResource -ModuleName   xtimezone, xnetworking,cFileShare
         
-
-    node $Allnodes.Where({$_.dupa -eq "dc01"}).nodename
+    node $Allnodes.nodename
     
     {
+
+
+    cCreateFileShare test {
+    
+    ShareName = "Hello"
+    Path = "E:\"
+    Ensure = "Present"
+    
+    
+    
+    
+    } 
+
+
+
 
 
     xtimezone Eastern {
 
 
-    TimeZone = "Pacific Standard Time"
+    TimeZone = "Eastern Standard Time"
 
     }
 
 
 
-    group MyDemo {
 
-
-    GroupName = "Nice"
-    Description = = "sialalal"
-    Ensure = "Present"
-    Credential = $credential
-    MembersToInclude = "Supermario\MariuszS"
-
-
-
-    }
 
       
      xDNSServerAddress YOYODNS {
@@ -51,70 +51,66 @@ param(
      AddressFamily = "IPv4"
      
      
-     }  
+     } 
+     
+  
+      
 
 
   
 
+  
 
-
-     LocalConfigurationManager {
+  <#   LocalConfigurationManager {
 
      AllowModuleOverwrite = $true
      ConfigurationID = $guid
      ConfigurationMode = "ApplyandMonitor"
      RefreshMode = "Pull"
      DownloadManagerName = "DscFileDownloadManager"
-     DownloadManagerCustomData =  @{sourcepath = "\\DC01\PullServer"}
-     CertificateID  = $node.thumbprint
+     DownloadManagerCustomData =  @{
+     SourcePath  = "\\Dc01\dscconfig"}
+     
 
      } #lcm
-
-      
+#>
+     
     }
   
   
-    node $allnodes.Where({$_.dupa -eq "windows8"}).nodename
-    {
-      
-        
-        
-        
-
-      
-
-}
-
       
     }
 
     
 $configdata = @{
 AllNodes = @(
-@{
-NodeName="*"
-path = "c:\lolita.zip"
-};
+
 @{
 NodeName="DC01"
-dupa = 'DC01'
-Certificatefile = "C:\mycert.cer"
-Thumbprint = "38BA053E79A8BA88C25A25DA60A111B5907958BB"
 };
-@{
-NodeName="windows8"
 
-Destination = 'C:\TUTAJ\'
-dupa = 'dc01'
-};
 );
 }
 
 
+configuration LCM {
+
+node dc01 {
+
+LocalConfigurationManager {
+
+RefreshMode = "Pull"
 
 
+}
 
 
+}
+
+}
+
+
+LCM -OutputPath c:\try\
 ## Need Giud
 
 $guid = [guid]::NewGuid().guid
@@ -123,8 +119,7 @@ $guid = [guid]::NewGuid().guid
 ## Genereting Mof Files
 
 $paramhash = @{
-guid = $guid
-credential = "Supermario\Mariusz"
+
 OutputPath = "C:\try"
 ConfigurationData = $configdata
 verbose = $true
@@ -132,12 +127,21 @@ verbose = $true
 }
 
 ## Genereting Mof Files
-
+`
 PullServer @paramhash
+ 
+
+Set-DSCLocalConfigurationManager c:\try\ -CimSession  $session
+get-DSCLocalConfigurationManager
+
+Start-DscConfiguration C:\try -Wait -Force -Verbose
 
 
+$src  = "C:\try\windows8.mof"
+$dst = Join-Path -Path "\\dc01\dscconfig" -ChildPath "468f2def-f627-440c-ae4b-e934c8c96e0a.mof"
+
+Copy-Item -Path $src -Destination $dst -PassThru 
+New-DSCCheckSum $dst 
 
 
-
-
-Start-DscConfiguration c:\try\ -Wait -Force -Verbose
+$session = New-CimSession -ComputerName windows8 
