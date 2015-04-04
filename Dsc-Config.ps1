@@ -9,7 +9,7 @@
 #>
 
  
-Import-DscResource -ModuleName xsmbshare,hostsfile,RecylceBin,xDisk,cFileShare,cFolderQuota,xnetworking
+Import-DscResource -ModuleName csmbshare,hostsfile,RecylceBin,xDisk,cFileShare,cFolderQuota,xnetworking
  ##Testing all installed windows features
  
  Node $AllNodes.Where({$_.name -eq'server1'}).nodename {

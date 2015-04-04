@@ -754,6 +754,6 @@ function Publish-MrMOFToSMB {
     }
 }
 
-
+Test-DscConfiguration -CimSession windows7 -Verbose
 Test-DscConfiguration -CimSession windows8 -Verbose
 Test-DscConfiguration  -Verbose
