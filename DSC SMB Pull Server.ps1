@@ -3,7 +3,7 @@
 
 
  
-Import-DscResource -ModuleName csmbshare,hostsfile,RecylceBin,xDisk,cFileShare,cFolderQuota,xnetworking
+Import-DscResource -ModuleName xTimeZone,csmbshare,hostsfile,RecylceBin,xDisk,cFileShare,cFolderQuota,xnetworking
 
 
  
@@ -213,6 +213,26 @@ Import-DscResource -ModuleName csmbshare,hostsfile,RecylceBin,xDisk,cFileShare,c
 
                              }
 
+         cFolderQuota 'Warsaw' {
+
+        Path = 'K:\Warsaw'
+        Ensure = 'present'
+        Template = 'Monitor 500 MB Share'
+        Subfolders = $true
+        DependsOn = '[cQuotaTemplate]Generic'
+
+                             }
+
+        cFolderQuota 'test' {
+
+        Path = 'C:\Scripts'
+        Ensure = 'present'
+        Template = 'Generic'
+        Subfolders = $true
+        DependsOn = '[cQuotaTemplate]Generic'
+
+                             }
+
 ## Creating Quotas Templates
 
         cQuotaTemplate NewYork {
@@ -301,6 +321,21 @@ Import-DscResource -ModuleName csmbshare,hostsfile,RecylceBin,xDisk,cFileShare,c
 
 
  }
+
+
+
+
+
+    }
+
+ Node $AllNodes.Where({$_.name -eq'windows7'}).nodename {
+
+
+ 
+xTimeZone TimeZoneExample
+        {
+            TimeZone = "Pacific Standard Time"
+        }
 
 
 
@@ -481,7 +516,7 @@ Configuration SmbPullServerLCM {
 
      AllowModuleOverwrite = $true
      ConfigurationID = $node.guid
-     ConfigurationMode = "ApplyandMonitor"
+     ConfigurationMode = "ApplyAndAutoCorrect"
      RefreshMode = "Pull"
      DownloadManagerName = "DscFileDownloadManager"
      DownloadManagerCustomData =  @{
@@ -503,7 +538,30 @@ Configuration SmbPullServerLCM {
 
      AllowModuleOverwrite = $true
      ConfigurationID = $node.guid
-     ConfigurationMode = "ApplyandMonitor"
+     ConfigurationMode = "ApplyAndAutoCorrect"
+     RefreshMode = "Pull"
+     DownloadManagerName = "DscFileDownloadManager"
+     DownloadManagerCustomData =  @{
+     SourcePath  = "\\server1\PullServer"}
+
+
+
+ }
+
+
+
+
+    }  
+
+ Node $AllNodes.Where({$_.name -eq'windows7'}).nodename {
+
+
+  LocalConfigurationManager {
+
+
+     AllowModuleOverwrite = $true
+     ConfigurationID = $node.guid
+     ConfigurationMode = "ApplyAndAutoCorrect"
      RefreshMode = "Pull"
      DownloadManagerName = "DscFileDownloadManager"
      DownloadManagerCustomData =  @{
@@ -518,13 +576,15 @@ Configuration SmbPullServerLCM {
 
     }
 
+
+
 }
 
 
 
 SmbPullServerLCM -ConfigurationData $myconfig -OutputPath "C:\DSC-LCMCONFIG"
 
-Set-DscLocalConfigurationManager -Path "C:\DSC-LCMCONFIG" -Verbose
+Set-DscLocalConfigurationManager -Path "C:\DSC-LCMCONFIG" -CimSession windows7  -Verbose
 
 
 $myconfig = `
@@ -557,7 +617,12 @@ $myconfig = `
  name = 'windows8'
  Guid = [guid]::NewGuid().guid
  }
-
+   @{
+ NodeName='windows7'
+ Ensure = 'present'
+ name = 'windows7'
+ Guid = [guid]::NewGuid().guid
+ }
 
 
  )
