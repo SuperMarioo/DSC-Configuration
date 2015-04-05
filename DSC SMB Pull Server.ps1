@@ -34,6 +34,54 @@ Import-DscResource -ModuleName xTimeZone,csmbshare,hostsfile,RecylceBin,xDisk,cF
  #>
 
 
+## Testing Script Resource 
+
+
+
+
+
+Script ScriptExample
+{
+    SetScript = { 
+        $sw = New-Object System.IO.StreamWriter("C:\TestFile.txt")
+        $sw.WriteLine("Some sample string")
+        $sw.Close()
+    }
+    TestScript = { If (Test-Path "C:\TestFile.txt") { return $true} else {return $false} }
+    GetScript = { [string]$nice = (dir "C:\DSC-CONFIG" | select name)[0].name
+    
+    
+    
+    return @{
+
+      GetScript = $GetScript
+      SetScript = $SetScript
+      TestScript = $TestScript
+      Result = $nice
+
+    }
+    
+    
+     }   }          
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## 1.Creating Partitions
 
 
@@ -328,7 +376,7 @@ Import-DscResource -ModuleName xTimeZone,csmbshare,hostsfile,RecylceBin,xDisk,cF
 
     }
 
- Node $AllNodes.Where({$_.name -eq'windows7'}).nodename {
+ <#Node $AllNodes.Where({$_.name -eq'windows7'}).nodename {
 
 
  
@@ -342,7 +390,7 @@ xTimeZone TimeZoneExample
 
 
     }
-
+    #>
 }
 
 ## Zip Function
@@ -584,7 +632,7 @@ Configuration SmbPullServerLCM {
 
 SmbPullServerLCM -ConfigurationData $myconfig -OutputPath "C:\DSC-LCMCONFIG"
 
-Set-DscLocalConfigurationManager -Path "C:\DSC-LCMCONFIG" -CimSession windows7  -Verbose
+Set-DscLocalConfigurationManager -Path "C:\DSC-LCMCONFIG"  -Verbose
 
 
 $myconfig = `
@@ -754,6 +802,7 @@ function Publish-MrMOFToSMB {
     }
 }
 
-Test-DscConfiguration -CimSession windows7 -Verbose
+
 Test-DscConfiguration -CimSession windows8 -Verbose
 Test-DscConfiguration  -Verbose
+

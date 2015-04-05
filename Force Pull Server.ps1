@@ -23,4 +23,4 @@ Invoke-Command -ComputerName $computername -ScriptBlock {
 
 
 
-"windows8","server1" |  Force-PullServer 
+"windows8","server1" | ?   { Force-PullServer $_ }
