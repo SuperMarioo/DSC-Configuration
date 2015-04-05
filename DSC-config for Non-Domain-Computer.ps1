@@ -105,7 +105,7 @@ configuration newserver {
     )
 
 
- Import-DscResource -Module xActiveDirectory, xComputerManagement, xNetworking,xDhcpServer 
+ Import-DscResource -Module xActiveDirectory, xComputerManagement, xNetworking,xDhcpServer,xDisk,cSmbShare,cFolderQuota  
 
 
 Node $AllNodes.nodename {
@@ -119,21 +119,31 @@ Node $AllNodes.nodename {
             
                             }
 
-
-
-xComputer SetName { 
-          Name = $Node.MachineName 
-
-
-        }
-
-
+##  Config  DNS 
 
 xDNSServerAddress SetDNS {
             Address = $Node.DNSAddress
             InterfaceAlias = $Node.InterfaceAlias
             AddressFamily = $Node.AddressFamily
         }
+
+
+##  Config  Name 
+xComputer SetName { 
+          Name = $Node.MachineName 
+
+
+        }
+
+xADDomain FirstDC {
+            DomainName = $Node.DomainName
+            DomainAdministratorCredential = $domainCred
+            SafemodeAdministratorPassword = $safemodeCred
+            DependsOn = '[xComputer]SetName', '[WindowsFeature]ADDSInstall'
+        }
+
+
+##  Installing windows Features
 
 WindowsFeature ADDSInstall {
             Ensure = 'Present'
@@ -155,43 +165,61 @@ WindowsFeature RSAT-ADDS-Tools {
                     DependsOn = "[xADDomain]FirstDC"
  
                 }
-  WindowsFeature RSAT-ADDS {
+
+WindowsFeature RSAT-ADDS {
  
                     Name = 'RSAT-ADDS'
                     Ensure = 'Present'
                     DependsOn = "[xADDomain]FirstDC"
                 }
 
- WindowsFeature RSAT-AD-Tools {
+WindowsFeature RSAT-AD-Tools {
  
                     Name = 'RSAT-AD-Tools'
                     Ensure = 'Present'
                     DependsOn = "[xADDomain]FirstDC"
                 }
 
- WindowsFeature RSAT-AD-AdminCenter {
+WindowsFeature RSAT-AD-AdminCenter {
  
                     Name = 'RSAT-AD-AdminCenter'
                     Ensure = 'Present'
                     DependsOn = "[xADDomain]FirstDC"
                 }
 
- WindowsFeature RSAT-DHCP {
+WindowsFeature RSAT-DHCP {
  
                     Name = 'RSAT-DHCP'
                     Ensure = 'Present'
                     DependsOn = "[xADDomain]FirstDC","[WindowsFeature]DHCP"
                 }
+
+WindowsFeature FileAndStorage-Services  {
  
+                    Name = 'FileAndStorage-Services'
+                    Ensure = 'Present'
+                    IncludeAllSubFeature = $true
+                    DependsOn = "[xADDomain]FirstDC","[WindowsFeature]DHCP"
+                }
+
+WindowsFeature FS-Resource-Manager  {
+ 
+                    Name = 'FS-Resource-Manager'
+                    Ensure = 'Present'
+                    IncludeAllSubFeature = $true
+                    DependsOn = "[WindowsFeature]FileAndStorage-Services"
+                }
+
+WindowsFeature  RSAT-File-Services {
+ 
+                    Name = 'RSAT-File-Services'
+                    Ensure = 'Present'
+                    IncludeAllSubFeature = $true
+                    DependsOn = "[WindowsFeature]FS-Resource-Manager"
+                }
 
 
-xADDomain FirstDC {
-            DomainName = $Node.DomainName
-            DomainAdministratorCredential = $domainCred
-            SafemodeAdministratorPassword = $safemodeCred
-            DependsOn = '[xComputer]SetName', '[WindowsFeature]ADDSInstall'
-        }    
-    
+## Seting up DHCP 
 xDhcpServerScope settingscope {
 
         Name = 'DC01'
@@ -215,7 +243,188 @@ xDhcpServerOption     settingsforDHCP {
         AddressFamily = 'IPv4'
         DependsOn = "[WindowsFeature]DHCP" 
 }
+
+## 1.Creating Partitions
+
+
+          xDisk Libary
+        {
+         
+             DiskNumber = 1
+             DriveLetter = 'J'
+             
+        }
+
+          xDisk Client
+        {
+          
+             DiskNumber = 2
+             DriveLetter = 'K'
+        }
+
+          xDisk PullServer
+        {
+          
+             DiskNumber = 3
+             DriveLetter = 'W'
+        }
+
+          xDisk Administration
+        {
+          
+             DiskNumber = 4
+             DriveLetter = 'G'
+        }
+
+## 2.Assigning  Perrmissions 
     
+  
+          cSmbShare  Libary  {
+
+   Name = 'Libary'
+   Path = 'j:\'
+   Ensure = 'present'
+   ReadAccess = 'everyone'
+   FullAccess = 'MARIO\Administrator' 
+   FolderEnumerationMode = 'AccessBased'
+   DependsOn = '[xDisk]Libary'
+  
+   
+ 
+            }
+
+          cSmbShare  Client {
+
+   Name = 'Client'
+   Path = 'K:\'
+   Ensure = 'present'
+   FullAccess = 'MARIO\Administrator' 
+   ReadAccess = 'everyone'
+   Description = 'Client Drive for Users'
+   FolderEnumerationMode = 'AccessBased'
+   ConcurrentUserLimit = 10
+   DependsOn = '[xDisk]Client'
+   
+   
+   
+            }
+
+          cSmbShare  PullServer {
+
+   Name = 'PullServer'
+   Path = 'W:\'
+   Ensure = 'present'
+   Description = "PullServer"
+   FullAccess = 'MARIO\Administrator'
+   ReadAccess = 'everyone'
+   EncryptData = $false
+   DependsOn = '[xDisk]PullServer'
+   
+   
+            }
+
+          cSmbShare  Users {
+
+   Name = 'Users'
+   Path = 'G:\'
+   Ensure = 'present'
+   FullAccess = 'MARIO\Administrator'
+   ReadAccess = 'everyone'
+   Description = 'Administration Drive for Users'
+   FolderEnumerationMode = 'Unrestricted'
+   ConcurrentUserLimit = 10
+   DependsOn = '[xDisk]Administration'
+   
+   
+            }
+
+ ## 6. Assigning Quotas
+
+
+        cFolderQuota London {
+
+        Path = 'K:\'
+        Ensure = 'present'
+        Template = 'London'
+        Subfolders = $false
+        DependsOn = '[cQuotaTemplate]NewYork'
+                 }                     
+        cFolderQuota 'New York' {
+
+        Path = 'G:\'
+        Ensure = 'present'
+        Template = 'New York'
+        Subfolders = $false
+        DependsOn = '[cQuotaTemplate]NewYork'
+
+                             }
+        cFolderQuota 'Single Folder' {
+
+        Path = 'J:\' 
+        Ensure = 'present'
+        Template = 'Generic'
+        Subfolders = $false
+        DependsOn = '[cQuotaTemplate]Generic'
+
+                             }
+        cFolderQuota 'Warsaw' {
+
+        Path = 'W:\'
+        Ensure = 'present'
+        Template = 'Monitor 500 MB Share'
+        Subfolders = $false
+        DependsOn = '[cQuotaTemplate]Generic'
+
+                             }
+
+
+
+## Creating Quotas Templates
+
+        cQuotaTemplate NewYork {
+
+        Name = 'New York'
+        Size = 11mb
+        Description = 'London Template'
+        MailTo = 'Supermario@supermario.com;Administrator@supermario.com;Supermario@supermario.com'
+        Body = 'You have Reached your Limit of Space Please Please '
+        Subject = 'We Love Arsenal :)'
+        Percentage = 12
+        Ensure = 'present'
+        SoftLimit =$false
+        DependsOn = "[WindowsFeature]FS-Resource-Manager"
+        
+
+        }
+        cQuotaTemplate london {
+
+        Name = 'London'
+        Size = 350mb
+        Description = 'NewYork Template'
+        MailTo = 'Supermario@supermario.com'
+        Body = 'WE Love Powershell Dont exeedec your SPACE !!!'
+        Subject = 'We Lov Powershell DSC'
+        Percentage = 11
+        Ensure = 'present'
+        SoftLimit =$false
+        DependsOn = "[WindowsFeature]FS-Resource-Manager"
+        
+
+        }
+        cQuotaTemplate Generic {
+
+        Name = 'Generic'
+        Size = 10GB
+        Description = 'User Template'
+        MailTo = 'Owner'
+        Percentage = 78
+        Ensure = 'present'
+        SoftLimit =$true
+        DependsOn = "[WindowsFeature]FS-Resource-Manager"
+        
+
+        }
+   
     
     }
 
@@ -267,7 +476,7 @@ $cred = Get-Credential
 
 
 
-Set-DscLocalConfigurationManager -Path "C:\New Server DSC" -Credential $cred -Verbose
+Set-DscLocalConfigurationManager -Path "C:\New Server DSC" -Credential $cred -Verbose 
 
 Start-DscConfiguration "C:\New Server DSC"  -Credential $cred -Wait  -Verbose -Force
 
