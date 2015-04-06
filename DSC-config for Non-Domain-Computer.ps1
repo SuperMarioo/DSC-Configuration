@@ -351,7 +351,7 @@ xDhcpServerOption Vlan20ScopeOpitons {
 xDhcpServerReservation DC01MainScopeReservation {
 
 
-    ClientMACAddress = "00-15-5D-00-0A-06"
+    ClientMACAddress = "00155D000A06"
     ScopeID = '192.168.233.0'
     IPAddress = "192.168.233.145"
     AddressFamily = 'IPv4'
