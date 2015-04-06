@@ -100,6 +100,9 @@ configuration newserver {
         
         [Parameter(Mandatory)] 
         [pscredential]$domainCred,
+
+          [Parameter(Mandatory)] 
+        [pscredential]$userpassword,
  
         [pscredential]$Credential
     )
@@ -174,7 +177,6 @@ xDNSServerAddress SetDNS {
 xComputer SetName { 
           Name = $Node.MachineName 
 
-
         }
 ## 5. Setting up Domain Controller
 WindowsFeature ADDSInstall {
@@ -191,13 +193,49 @@ xADDomain FirstDC {
         }
 
 
+xWaitForADDomain DscForestWait 
+
+        { 
+            DomainName       = 'mario.com' 
+            DomainUserCredential = $domainCred 
+            RetryCount       = 10
+            RetryIntervalSec = 5
+            DependsOn        = '[xADDomain]FirstDC'
+        } 
+
+## Adding Users 
+
+xADUser Mariusz {
+
+        DomainName = $Node.DomainName
+        DomainAdministratorCredential = $domainCred
+        UserName = "Mariusz"
+        Password = $userpassword
+        Ensure = "present"
+        DependsOn = "[xWaitForADDomain]DscForestWait" 
+
+}
+
+xADUser Chris {
+
+        DomainName = $Node.DomainName
+        DomainAdministratorCredential = $domainCred
+        UserName = "Chris"
+        Password = $userpassword
+        Ensure = "present"
+        DependsOn = "[xWaitForADDomain]DscForestWait" 
+
+}
+
+
+
 ## 6.Installing WindowsFeature
 
 WindowsFeature RSAT-ADDS-Tools {
  
                     Name = 'RSAT-ADDS-Tools'
                     Ensure = 'Present'
-                    DependsOn = "[WindowsFeature]ADDSInstall"
+                    DependsOn = "[xWaitForADDomain]DscForestWait"
  
                 }
 
@@ -205,35 +243,35 @@ WindowsFeature RSAT-ADDS {
  
                     Name = 'RSAT-ADDS'
                     Ensure = 'Present'
-                    DependsOn = "[xADDomain]FirstDC"
+                    DependsOn = "[xWaitForADDomain]DscForestWait"
                 }
 
 WindowsFeature RSAT-AD-Tools {
  
                     Name = 'RSAT-AD-Tools'
                     Ensure = 'Present'
-                    DependsOn = "[xADDomain]FirstDC"
+                    DependsOn = "[xWaitForADDomain]DscForestWait"
                 }
 
 WindowsFeature RSAT-AD-AdminCenter {
  
                     Name = 'RSAT-AD-AdminCenter'
                     Ensure = 'Present'
-                    DependsOn = "[xADDomain]FirstDC"
+                    DependsOn = "[xWaitForADDomain]DscForestWait"
                 }
 
 WindowsFeature DHCP {
             Ensure = 'present'
             Name = 'DHCP'
             IncludeAllSubFeature = $true
-            DependsOn = "[xADDomain]FirstDC"
+            DependsOn = "[xWaitForADDomain]DscForestWait"
         }
 
 WindowsFeature RSAT-DHCP {
  
                     Name = 'RSAT-DHCP'
                     Ensure = 'Present'
-                    DependsOn = "[xADDomain]FirstDC","[WindowsFeature]DHCP"
+                    DependsOn = "[xWaitForADDomain]DscForestWait","[WindowsFeature]DHCP"
                 }
 
 WindowsFeature FileAndStorage-Services  {
@@ -241,7 +279,7 @@ WindowsFeature FileAndStorage-Services  {
                     Name = 'FileAndStorage-Services'
                     Ensure = 'Present'
                     IncludeAllSubFeature = $true
-                    DependsOn = "[xADDomain]FirstDC","[WindowsFeature]DHCP"
+                    DependsOn = "[xWaitForADDomain]DscForestWait","[WindowsFeature]DHCP"
                 }
 
 WindowsFeature FS-Resource-Manager  {
@@ -262,7 +300,7 @@ WindowsFeature  RSAT-File-Services {
 
 
 ## 7.Seting up DHCP 
-xDhcpServerScope settingscope {
+xDhcpServerScope DC01MainScope {
 
         Name = 'DC01'
         LeaseDuration = '00:08:00'
@@ -275,17 +313,54 @@ xDhcpServerScope settingscope {
         DependsOn = "[WindowsFeature]DHCP"
 }
     
-xDhcpServerOption 
-settingsforDHCP {
+xDhcpServerOption DC01MainScopeOption {
 
 
         Ensure = 'present' 
         ScopeID = '192.168.233.0'
         DnsDomain = 'mario.com' 
-        DnsServerIPAddress = '192.168.233.27','8.8.8.8'
+        DnsServerIPAddress = '192.168.233.27'
         AddressFamily = 'IPv4'
-        DependsOn = "[WindowsFeature]DHCP" 
+        DependsOn = "[WindowsFeature]DHCP","[xDhcpServerScope]DC01MainScope" 
 }
+
+xDhcpServerScope Vlan20Scope {
+
+        Name = 'Vlan20'
+        LeaseDuration = '00:08:00'
+        State = 'Active'
+        AddressFamily = 'IPv4'
+        IPStartRange = '192.168.168.1'  
+        IPEndRange = '192.168.168.254'
+        SubnetMask = '255.255.255.0'
+        Ensure = 'present'
+        DependsOn = "[WindowsFeature]DHCP"
+}
+
+xDhcpServerOption Vlan20ScopeOpitons {
+
+
+        Ensure = 'present' 
+        ScopeID = '192.168.168.0'
+        DnsDomain = 'Vlan20.com' 
+        DnsServerIPAddress = '192.168.168.27'
+        AddressFamily = 'IPv4'
+        DependsOn = "[WindowsFeature]DHCP","[xDhcpServerScope]Vlan20Scope" 
+}
+
+xDhcpServerReservation DC01MainScopeReservation {
+
+
+    ClientMACAddress = "00-15-5D-00-0A-06"
+    ScopeID = '192.168.233.0'
+    IPAddress = "192.168.233.145"
+    AddressFamily = 'IPv4'
+    Ensure = "Present"
+    Name = "Windows7 Machine"
+    DependsOn = "[xDhcpServerScope]DC01MainScope"
+
+}
+
 
 }
 
@@ -323,12 +398,12 @@ $DevConfig = @{
 
 
 
-newserver -ConfigurationData $DevConfig   -OutputPath "C:\New Server DSC" -Credential $cred -domainCred $cred -safemodeCred $cred 
+newserver -ConfigurationData $DevConfig   -OutputPath "C:\New Server DSC" -userpassword $user -Credential $cred -domainCred $cred -safemodeCred $cred 
 
 
 
 
-
+$user = Get-Credential
 $cred = Get-Credential
 
 
