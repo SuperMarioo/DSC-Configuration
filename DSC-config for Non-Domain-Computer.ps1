@@ -13,7 +13,8 @@ function Setting-Connection {
   (
   [Parameter(Mandatory=$true,
   Position=0)]
-  [string]$Computername
+  [string]$Computername,
+  [PSCredential]$Credential
   )
 
 
@@ -42,7 +43,7 @@ force = $true
 if ($mywsman.value) {
 
 
-$hash.add("value","$($mywsman.value),$newserver")
+$hash.add("value","$newserver")
 
 
 
@@ -66,7 +67,7 @@ root = "\\$newserver\C$\Program Files\WindowsPowerShell\modules"
 
 }
 
-New-PSDrive @psdrive
+New-PSDrive @psdrive -Credential $Credential
 
 
 
@@ -108,8 +109,7 @@ configuration newserver {
     )
 
 
- Import-DscResource -Module xActiveDirectory, xComputerManagement, xNetworking,xDhcpServer,xDisk,cSmbShare,cFolderQuota  
-
+ Import-DscResource -Module xActiveDirectory, xComputerManagement, xNetworking,xDhcpServer,xDisk,cSmbShare,xwindowsupdate
 
 Node $AllNodes.nodename {
 
@@ -171,7 +171,34 @@ xDNSServerAddress SetDNS {
             Address = $Node.DNSAddress
             InterfaceAlias = $Node.InterfaceAlias
             AddressFamily = $Node.AddressFamily
+            DependsOn = "[xComputer]SetName"
         }
+
+##  Testing Ip Address 
+
+
+  xHotfix HotfixInstall 
+        { 
+            Ensure = "Present" 
+            Path = "c:\users\administrator\desktop\WindowsBlue-KB3037315-x64.msu" 
+            Id = "KB3037315" 
+        }  
+
+
+
+xIPAddress  newIp {
+
+InterfaceAlias = $Node.InterfaceAlias
+IPAddress = "192.168.233.36"
+AddressFamily = $Node.AddressFamily
+SubnetMask = 24
+DefaultGateway = "192.168.233.1"
+DependsOn = "[xComputer]SetName"
+
+
+}
+
+
 
 ## 4.Config  Name 
 xComputer SetName { 
@@ -182,14 +209,14 @@ xComputer SetName {
 WindowsFeature ADDSInstall {
             Ensure = 'Present'
             Name = 'AD-Domain-Services'
-            DependsOn = "[xComputer]SetName"
+            DependsOn = "[xComputer]SetName","[xDNSServerAddress]SetDNS","[xIPAddress]newIp"
         }
 
 xADDomain FirstDC {
             DomainName = $Node.DomainName
             DomainAdministratorCredential = $domainCred
             SafemodeAdministratorPassword = $safemodeCred
-            DependsOn = '[xComputer]SetName', '[WindowsFeature]ADDSInstall'
+            DependsOn = '[xComputer]SetName', '[WindowsFeature]ADDSInstall',"[xDNSServerAddress]SetDNS","[xIPAddress]newIp"
         }
 
 
@@ -381,15 +408,15 @@ $DevConfig = @{
 
 
 @{
-            NodeName = '192.168.233.27'
-            MachineName = 'DC01'
+            NodeName = 'domain01'
+            MachineName = 'Domain01'
             DomainName = 'mario.com'
             IPAddress = '192.168.233.20'
             InterfaceAlias = 'Ethernet'
             DefaultGateway = '192.168.233.50'
             SubnetMask = '24'
             AddressFamily = 'IPv4'
-            DNSAddress = '127.0.0.1','8.8.8.8'
+            DNSAddress = '127.0.0.1','8.8.8.1'
 }
            
 );
