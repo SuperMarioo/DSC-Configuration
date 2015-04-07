@@ -31,7 +31,7 @@ Import-DscResource -ModuleName cVSSResources,xTimeZone,csmbshare,hostsfile,Recyl
 
 
  }
- #>
+
 
 
 ## Testing cVSS Resource ,
@@ -74,7 +74,7 @@ cVSSTaskScheduler Noon{
 
 ## Testing Script Resource 
 
-
+ 
 
 
 
@@ -135,7 +135,7 @@ Script ScriptExample
              DriveLetter = 'G'
         }
 
-
+#>
 ## 2.Assigning  Perrmissions 
     
   
@@ -145,30 +145,31 @@ Script ScriptExample
    Path = 'j:\'
    Ensure = 'present'
    ReadAccess = 'SUPERMARIO\ElaineJ'
-   FullAccess = 'SUPERMARIO\MichaelS'
+   FullAccess = 'SUPERMARIO\MichaelS',"SUPERMARIO\Mario"
    FolderEnumerationMode = 'AccessBased'
-   DependsOn = '[xDisk]Libary'
+  
   
    
  
-            }
+            } 
 
           cSmbShare  Client {
 
    Name = 'Client'
    Path = 'K:\'
    Ensure = 'present'
-   ChangeAccess = 'SUPERMARIO\ElaineJ'
+   ChangeAccess = 'SUPERMARIO\ElaineJ','SUPERMARIO\MarianG'
    FullAccess = "SUPERMARIO\Mario"
    ReadAccess = 'everyone'
    Description = 'Client Drive for Users'
    FolderEnumerationMode = 'AccessBased'
    ConcurrentUserLimit = 10
-   DependsOn = '[xDisk]Client'
+   
    
    
    
             }
+
 
           cSmbShare  PullServer {
 
@@ -177,9 +178,9 @@ Script ScriptExample
    Ensure = 'present'
    Description = "PullServer"
    FullAccess = 'SUPERMARIO\Administrator','SUPERMARIO\Mario'
-   ReadAccess = 'everyone'
+   ReadAccess = 'everyone','SUPERMARIO\MariuszS'
    EncryptData = $false
-   DependsOn = '[xDisk]PullServer'
+
    
    
             }
@@ -194,9 +195,9 @@ Script ScriptExample
    ReadAccess = 'SUPERMARIO\MarianG','SUPERMARIO\ElaineJ'
    Description = 'Administration Drive for Users'
    FolderEnumerationMode = 'AccessBased'
-   ConcurrentUserLimit = 67
+   ConcurrentUserLimit = 23
    EncryptData = $false
-   DependsOn = '[xDisk]Administration'
+ 
    
    
             }
@@ -213,7 +214,7 @@ Script ScriptExample
 
 ## 4. New Test Share
 
-
+<#
           cSmbShare LCM_DSC {
 
 
@@ -237,11 +238,11 @@ Script ScriptExample
           ReadAccess = 'everyone'
 
 
-             }
+             } #>
 
 ## 6. Assigning Quotas
 
-
+<#
         cFolderQuota London {
 
         Path = 'K:\London'
@@ -349,12 +350,12 @@ Script ScriptExample
         
 
         }
-
+        #>
 
 
                        }
                        
- Node $AllNodes.Where({$_.name -eq'windows8'}).nodename {
+ <#Node $AllNodes.Where({$_.name -eq'windows8'}).nodename {
 
 
  
@@ -399,7 +400,7 @@ Script ScriptExample
 
     }
 
- <#Node $AllNodes.Where({$_.name -eq'windows7'}).nodename {
+ Node $AllNodes.Where({$_.name -eq'windows7'}).nodename {
 
 
  
@@ -418,12 +419,13 @@ xTimeZone TimeZoneExample
 
 
 SmbPullServer  -ConfigurationData $myconfig -OutputPath "C:\DSC-CONFIG"
-Publish-MrMOFToSMB  "C:\DSC-CONFIG" 
-
-break ;
 
 Start-DscConfiguration -Path "C:\DSC-CONFIG"   -Wait -Verbose -Force
 
+break ;
+
+
+Publish-MrMOFToSMB  "C:\DSC-CONFIG" 
 Configuration SmbPullServerLCM {
  
 
