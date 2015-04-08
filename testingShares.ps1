@@ -23,7 +23,7 @@ $has = @{
    ReadAccess = 'SUPERMARIO\MarianG','SUPERMARIO\ElaineJ'
    Description = 'Administration Drive for Users'
    FolderEnumerationMode = 'AccessBased'
-   ConcurrentUserLimit = 12
+   ConcurrentUserLimit = 11
    EncryptData = $false
   
 
