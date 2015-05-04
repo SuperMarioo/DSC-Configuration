@@ -109,7 +109,7 @@ configuration newserver {
     )
 
 
- Import-DscResource -Module xActiveDirectory, xComputerManagement, xNetworking,xDhcpServer,xDisk,cSmbShare,xwindowsupdate
+ Import-DscResource -Module xChrome,xActiveDirectory, xComputerManagement, xNetworking,xDhcpServer,xDisk,cSmbShare,xwindowsupdate
 
 Node $AllNodes.nodename {
 
@@ -161,7 +161,7 @@ Script ScriptExample
  LocalConfigurationManager {
            
             RebootNodeIfNeeded = $true
-            ConfigurationMode = "ApplyAndAutoCorrect"
+            ConfigurationMode = "ApplyOnly"
             
                             }
 
@@ -175,21 +175,21 @@ xDNSServerAddress SetDNS {
         }
 
 ##  Testing Ip Address 
-serv
+ 
+  MSFT_xChrome chrome {
+    
+    LocalPath = "c:\Chrome\"
+    Language = "English"
 
-  xHotfix HotfixInstall 
-        { 
-            Ensure = "Present" 
-            Path = "c:\users\administrator\desktop\WindowsBlue-KB3037315-x64.msu" 
-            Id = "KB3037315" 
-        }  
 
+
+ }
 
 
 xIPAddress  newIp {
 
 InterfaceAlias = $Node.InterfaceAlias
-IPAddress = "192.168.233.36"
+IPAddress = "192.168.233.1"
 AddressFamily = $Node.AddressFamily
 SubnetMask = 24
 DefaultGateway = "192.168.233.1"
@@ -212,23 +212,10 @@ WindowsFeature ADDSInstall {
             DependsOn = "[xComputer]SetName","[xDNSServerAddress]SetDNS","[xIPAddress]newIp"
         }
 
-xADDomain FirstDC {
-            DomainName = $Node.DomainName
-            DomainAdministratorCredential = $domainCred
-            SafemodeAdministratorPassword = $safemodeCred
-            DependsOn = '[xComputer]SetName', '[WindowsFeature]ADDSInstall',"[xDNSServerAddress]SetDNS","[xIPAddress]newIp"
-        }
 
 
-xWaitForADDomain DscForestWait 
 
-        { 
-            DomainName       = 'mario.com' 
-            DomainUserCredential = $domainCred 
-            RetryCount       = 10
-            RetryIntervalSec = 5
-            DependsOn        = '[xADDomain]FirstDC'
-        } 
+
 
 ## Adding Users 
 
@@ -239,7 +226,7 @@ xADUser Mariusz {
         UserName = "Mariusz"
         Password = $userpassword
         Ensure = "present"
-        DependsOn = "[xWaitForADDomain]DscForestWait" 
+
 
 }
 
@@ -250,7 +237,7 @@ xADUser Chris {
         UserName = "Chris"
         Password = $userpassword
         Ensure = "present"
-        DependsOn = "[xWaitForADDomain]DscForestWait" 
+ 
 
 }
 
@@ -262,7 +249,7 @@ WindowsFeature RSAT-ADDS-Tools {
  
                     Name = 'RSAT-ADDS-Tools'
                     Ensure = 'Present'
-                    DependsOn = "[xWaitForADDomain]DscForestWait"
+
  
                 }
 
@@ -270,35 +257,35 @@ WindowsFeature RSAT-ADDS {
  
                     Name = 'RSAT-ADDS'
                     Ensure = 'Present'
-                    DependsOn = "[xWaitForADDomain]DscForestWait"
+
                 }
 
 WindowsFeature RSAT-AD-Tools {
  
                     Name = 'RSAT-AD-Tools'
                     Ensure = 'Present'
-                    DependsOn = "[xWaitForADDomain]DscForestWait"
+
                 }
 
 WindowsFeature RSAT-AD-AdminCenter {
  
                     Name = 'RSAT-AD-AdminCenter'
                     Ensure = 'Present'
-                    DependsOn = "[xWaitForADDomain]DscForestWait"
+
                 }
 
 WindowsFeature DHCP {
             Ensure = 'present'
             Name = 'DHCP'
             IncludeAllSubFeature = $true
-            DependsOn = "[xWaitForADDomain]DscForestWait"
+
         }
 
 WindowsFeature RSAT-DHCP {
  
                     Name = 'RSAT-DHCP'
                     Ensure = 'Present'
-                    DependsOn = "[xWaitForADDomain]DscForestWait","[WindowsFeature]DHCP"
+                    DependsOn = "[WindowsFeature]DHCP"
                 }
 
 WindowsFeature FileAndStorage-Services  {
@@ -306,7 +293,7 @@ WindowsFeature FileAndStorage-Services  {
                     Name = 'FileAndStorage-Services'
                     Ensure = 'Present'
                     IncludeAllSubFeature = $true
-                    DependsOn = "[xWaitForADDomain]DscForestWait","[WindowsFeature]DHCP"
+                    DependsOn = "[WindowsFeature]DHCP"
                 }
 
 WindowsFeature FS-Resource-Manager  {
@@ -408,15 +395,15 @@ $DevConfig = @{
 
 
 @{
-            NodeName = 'domain01'
-            MachineName = 'Domain01'
+            NodeName = 'DC1'
+            MachineName = 'DC1'
             DomainName = 'mario.com'
-            IPAddress = '192.168.233.20'
-            InterfaceAlias = 'Ethernet'
+            IPAddress = '192.168.233.1'
+            InterfaceAlias = 'Ethernet 2'
             DefaultGateway = '192.168.233.50'
             SubnetMask = '24'
             AddressFamily = 'IPv4'
-            DNSAddress = '127.0.0.1','8.8.8.1'
+            DNSAddress = '127.0.0.1','8.8.8.8'
 }
            
 );

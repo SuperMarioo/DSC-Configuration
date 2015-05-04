@@ -1,42 +1,69 @@
-﻿Configuration SmbPullServer {
+﻿
+$myconfig = `
+
+@{
+
+ AllNodes = @(
+
+ @{
+ NodeName='*'
+
+ 
+ }
+
+
+ @{
+
+
+ NodeName='server1'
+ Ensure = 'present'
+ Guid = [guid]::NewGuid().guid
+ name = 'server1'
+ 
+
+ }
+
+  @{
+ NodeName='windows8'
+ Ensure = 'present'
+ name = 'windows8'
+ Guid = [guid]::NewGuid().guid
+ }
+   @{
+ NodeName='windows7'
+ Ensure = 'present'
+ name = 'windows7'
+ Guid = [guid]::NewGuid().guid
+ }
+
+
+ )
+
+
+
+}
+
+
+
+
+Configuration SmbPullServer {
  
 
 
  
-Import-DscResource -ModuleName cVSSResources,xTimeZone,csmbshare,hostsfile,RecylceBin,xDisk,cFileShare,cFolderQuota,xnetworking
+Import-DscResource -ModuleName xHyper-V , xWindowsUpdate,xTimeZone,csmbshare,hostsfile,RecylceBin,xDisk,cFileShare,cFolderQuota,xnetworking
 
 
  
  Node $AllNodes.Where({$_.name -eq'server1'}).nodename {
 
- <#
- user Localadmin {
-
-
- UserName = "LocalAdmin"
- Description =  "Chicago Adminitrator"
- Disabled = $false
- Ensure = "present"
- Password = $credential
-
-
- }
-
-
- group Admin {
- GroupName = "Administrators"
- DependsOn = "[user]Localadmin"
- MembersToInclude = "Localadmin"
-
-
-
- }
+ 
 
 
 
 ## Testing cVSS Resource ,
 
-
+<#
 
 cVSS Enable-shadowCopy {
 
@@ -75,7 +102,7 @@ cVSSTaskScheduler Noon{
 ## Testing Script Resource 
 
  
-
+#>
 
 
 Script ScriptExample
@@ -135,7 +162,7 @@ Script ScriptExample
              DriveLetter = 'G'
         }
 
-#>
+
 ## 2.Assigning  Perrmissions 
     
   
@@ -144,13 +171,9 @@ Script ScriptExample
    Name = 'Libary'
    Path = 'j:\'
    Ensure = 'present'
-   ReadAccess = 'SUPERMARIO\ElaineJ'
-   FullAccess = 'SUPERMARIO\MichaelS',"SUPERMARIO\Mario"
-   FolderEnumerationMode = 'AccessBased'
-  
-  
-   
- 
+   ReadAccess = 'everyone'
+   FolderEnumerationMode = "AccessBased"
+
             } 
 
           cSmbShare  Client {
@@ -158,16 +181,10 @@ Script ScriptExample
    Name = 'Client'
    Path = 'K:\'
    Ensure = 'present'
-   ChangeAccess = 'SUPERMARIO\ElaineJ','SUPERMARIO\MarianG'
-   FullAccess = "SUPERMARIO\Mario"
    ReadAccess = 'everyone'
-   Description = 'Client Drive for Users'
-   FolderEnumerationMode = 'AccessBased'
-   ConcurrentUserLimit = 10
-   
-   
-   
-   
+   FolderEnumerationMode = "AccessBased"
+ 
+ 
             }
 
 
@@ -180,6 +197,7 @@ Script ScriptExample
    FullAccess = 'SUPERMARIO\Administrator','SUPERMARIO\Mario'
    ReadAccess = 'everyone','SUPERMARIO\MariuszS'
    EncryptData = $false
+   FolderEnumerationMode = 'AccessBased'
 
    
    
@@ -190,13 +208,8 @@ Script ScriptExample
    Name = 'Users'
    Path = 'G:\'
    Ensure = 'present'
-   ChangeAccess = 'everyone'
-   FullAccess = 'SUPERMARIO\MariuszS'
    ReadAccess = 'SUPERMARIO\MarianG','SUPERMARIO\ElaineJ'
-   Description = 'Administration Drive for Users'
-   FolderEnumerationMode = 'AccessBased'
-   ConcurrentUserLimit = 23
-   EncryptData = $false
+   
  
    
    
@@ -214,14 +227,15 @@ Script ScriptExample
 
 ## 4. New Test Share
 
-<#
+
           cSmbShare LCM_DSC {
 
 
           Name = "DSC-LCM-CONFIG"
           Path = "C:\DSC-LCMCONFIG"
-          Ensure = 'absent'
+          Ensure = 'PRESENT'
           ReadAccess = 'everyone'
+          FolderEnumerationMode = 'AccessBased'
 
 
              }
@@ -234,16 +248,16 @@ Script ScriptExample
 
           Name = "DSC-CONFIG"
           Path = "C:\DSC-CONFIG"
-          Ensure = 'absent'
+          Ensure = 'PRESENT'
           ReadAccess = 'everyone'
+          FolderEnumerationMode = 'AccessBased'
 
 
-             } #>
+             } 
 
 ## 6. Assigning Quotas
 
-<#
-        cFolderQuota London {
+    cFolderQuota London {
 
         Path = 'K:\London'
         Ensure = 'present'
@@ -355,7 +369,7 @@ Script ScriptExample
 
                        }
                        
- <#Node $AllNodes.Where({$_.name -eq'windows8'}).nodename {
+Node $AllNodes.Where({$_.name -eq'windows8'}).nodename {
 
 
  
@@ -388,8 +402,18 @@ Script ScriptExample
 
 
  InterfaceAlias = "Internal"
- Address = "192.168.233.10","8.8.8.120"
+ Address = "192.168.233.10","8.8.8.8"
  AddressFamily = "Ipv4"
+
+
+ }
+
+ xHotfix DSCUpdate {
+
+
+            Ensure = "Present" 
+            Path = "\\server1\client\Windows8.1-KB3000850-x64.msu" 
+            Id = "KB3000850"
 
 
  }
@@ -400,7 +424,7 @@ Script ScriptExample
 
     }
 
- Node $AllNodes.Where({$_.name -eq'windows7'}).nodename {
+ <#Node $AllNodes.Where({$_.name -eq'windows7'}).nodename {
 
 
  
@@ -414,18 +438,24 @@ xTimeZone TimeZoneExample
 
 
     }
-    #>
+    
+}#>
+
 }
 
 
 SmbPullServer  -ConfigurationData $myconfig -OutputPath "C:\DSC-CONFIG"
 
-Start-DscConfiguration -Path "C:\DSC-CONFIG"   -Wait -Verbose -Force
+
+Publish-MrMOFToSMB  "C:\DSC-CONFIG" 
+
+
+Update-DscConfiguration -Wait 
 
 break ;
 
 
-Publish-MrMOFToSMB  "C:\DSC-CONFIG" 
+
 Configuration SmbPullServerLCM {
  
 
@@ -513,49 +543,7 @@ SmbPullServerLCM -ConfigurationData $myconfig -OutputPath "C:\DSC-LCMCONFIG"
 Set-DscLocalConfigurationManager -Path "C:\DSC-LCMCONFIG"  -Verbose
 
 
-$myconfig = `
 
-@{
-
- AllNodes = @(
-
- @{
- NodeName='*'
-
- 
- }
-
-
- @{
-
-
- NodeName='server1'
- Ensure = 'present'
- Guid = [guid]::NewGuid().guid
- name = 'server1'
- 
-
- }
-
-  @{
- NodeName='windows8'
- Ensure = 'present'
- name = 'windows8'
- Guid = [guid]::NewGuid().guid
- }
-   @{
- NodeName='windows7'
- Ensure = 'present'
- name = 'windows7'
- Guid = [guid]::NewGuid().guid
- }
-
-
- )
-
-
-
-}
 
 function Publish-MrMOFToSMB {
 
