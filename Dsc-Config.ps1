@@ -1,12 +1,12 @@
 ﻿Configuration windowstest {
  
-<#
+
  param(
  [Parameter(Mandatory=$true)]
  [System.Management.Automation.Credential()]$credential = [System.Management.Automation.Credential]
 
  )
-#>
+
 
  
 Import-DscResource -ModuleName csmbshare,hostsfile,RecylceBin,xDisk,cFileShare,cFolderQuota,xnetworking
@@ -232,6 +232,63 @@ Import-DscResource -ModuleName csmbshare,hostsfile,RecylceBin,xDisk,cFileShare,c
 
 
     }
+
+
+Node $AllNodes.Where({$_.name -eq'windows8'}).nodename {
+
+
+ 
+ xSmbShare  Clients {
+
+   Name = "Clients"
+   Path = "C:\Testwindows"
+   Ensure = "present"
+   NoAccess = "SUPERMARIO\MarianG"
+   ReadAccess = "SUPERMARIO\MariuszS","SUPERMARIO\Mario"
+   Description = "Testwindows"
+ 
+            }
+
+ xSmbShare  Libary {
+
+   Name = "Libary"
+   Path = "C:\Testwindows1"
+   Ensure = "present"
+   FullAccess = "SUPERMARIO\Administrator"
+   NoAccess = "SUPERMARIO\NOOB","SUPERMARIO\MarianG"
+   ReadAccess = "SUPERMARIO\MariuszS"
+   Description = "Testwindowsyoyoyoyo"
+
+   
+            }
+
+
+ xDNSServerAddress DNSSetup {
+
+
+ InterfaceAlias = "Internal"
+ Address = "192.168.233.10","8.8.8.8"
+ AddressFamily = "Ipv4"
+
+
+ }
+
+
+ xIPAddress StaticIp {
+
+
+ InterfaceAlias = "Internal"
+ AddressFamily = "Ipv4"
+ IPAddress = "192.168.233.170"
+ SubnetMask = 255.255.255.0
+ DefaultGateway = "192.168.233.50"
+
+ }
+
+
+
+    }
+
 
 }
  
